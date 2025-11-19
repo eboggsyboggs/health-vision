@@ -130,14 +130,30 @@ const SummaryPage = ({ formData, onNavigate }) => {
 
     // Action Plan
     addSection('YOUR PERSONALIZED ACTION PLAN')
-    addText(`This Week's Actions (${formData.timeCapacity || '10 minutes/day'}):`, 11, true)
-    if (actionPlan.weeklyActions.length > 0) {
-      actionPlan.weeklyActions.forEach(item => {
-        addText(`${item.area}:`, 10, true)
-        item.actions.forEach(action => addText(`  • ${action}`, 9))
+    
+    // Check if AI-enhanced recommendations are available and being viewed
+    if (aiEnhanced && showAiView && Array.isArray(aiEnhanced)) {
+      addText('AI-Personalized Recommendations:', 11, true)
+      addText('These actions have been tailored specifically to your situation, schedule, and goals.', 9)
+      yPos += 3
+      
+      aiEnhanced.forEach((item, index) => {
+        addText(`${index + 1}. ${item.action}`, 10, true)
+        addText(`Why this works: ${item.why}`, 9)
+        addText(`💡 Tip: ${item.tip}`, 9)
+        yPos += 2
       })
     } else {
-      addText('Complete the previous steps to generate actions')
+      // Original action plan
+      addText(`This Week's Actions (${formData.timeCapacity || '10 minutes/day'}):`, 11, true)
+      if (actionPlan.weeklyActions.length > 0) {
+        actionPlan.weeklyActions.forEach(item => {
+          addText(`${item.area}:`, 10, true)
+          item.actions.forEach(action => addText(`  • ${action}`, 9))
+        })
+      } else {
+        addText('Complete the previous steps to generate actions')
+      }
     }
 
     if (actionPlan.barrierStrategies.length > 0) {
