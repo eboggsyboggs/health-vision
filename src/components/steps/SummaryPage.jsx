@@ -415,7 +415,7 @@ END:VCALENDAR`.trim()
                 <button
                   onClick={handleAIEnhancement}
                   disabled={isEnhancing}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed no-print"
+                  className="flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed no-print"
                 >
                   {isEnhancing ? (
                     <>
@@ -432,7 +432,7 @@ END:VCALENDAR`.trim()
               ) : (
                 <button
                   onClick={() => setShowAiView(!showAiView)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all no-print"
+                  className="flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all no-print"
                 >
                   {showAiView ? (
                     <>
