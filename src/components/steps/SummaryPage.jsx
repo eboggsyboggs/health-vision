@@ -237,20 +237,29 @@ const SummaryPage = ({ formData, onNavigate }) => {
     let reminderDate = new Date(now)
     
     switch(period) {
+      case 'today':
+        // Set to 6 PM today
+        reminderDate.setHours(18, 0, 0, 0)
+        break
+      case 'tomorrow':
+        reminderDate.setDate(now.getDate() + 1)
+        reminderDate.setHours(9, 0, 0, 0)
+        break
+      case '3days':
+        reminderDate.setDate(now.getDate() + 3)
+        reminderDate.setHours(9, 0, 0, 0)
+        break
       case '1week':
         reminderDate.setDate(now.getDate() + 7)
+        reminderDate.setHours(9, 0, 0, 0)
         break
-      case '1month':
-        reminderDate.setMonth(now.getMonth() + 1)
-        break
-      case '3months':
-        reminderDate.setMonth(now.getMonth() + 3)
-        break
-      case '6months':
-        reminderDate.setMonth(now.getMonth() + 6)
+      case '2weeks':
+        reminderDate.setDate(now.getDate() + 14)
+        reminderDate.setHours(9, 0, 0, 0)
         break
       default:
-        reminderDate.setMonth(now.getMonth() + 3)
+        reminderDate.setDate(now.getDate() + 7)
+        reminderDate.setHours(9, 0, 0, 0)
     }
 
     const formatICSDate = (date) => {
@@ -260,11 +269,33 @@ const SummaryPage = ({ formData, onNavigate }) => {
     const startDate = formatICSDate(reminderDate)
     const endDate = formatICSDate(new Date(reminderDate.getTime() + 60 * 60 * 1000))
 
-    const visionSummary = `
-HEALTH SUMMIT REVIEW
-====================
+    // Build finalized actions content
+    const finalizedActions = getSelectedActionsData()
+    const actionsText = finalizedActions.length > 0 
+      ? finalizedActions.map((item, index) => {
+          let text = `${index + 1}. ${item.action}`
+          if (item.type === 'ai') {
+            text += `\\n   Why: ${item.why}\\n   Tip: ${item.tip}`
+          }
+          return text
+        }).join('\\n\\n')
+      : 'No actions selected yet'
 
-It's time to review and update your Health Summit & Action Plan!
+    // Build barriers content
+    const barriersText = actionPlan.barrierStrategies.length > 0 
+      ? actionPlan.barrierStrategies.map(item => 
+          `• ${item.barrier}\\n  Strategy: ${item.strategy}\\n  Tips: ${item.tips.join(', ')}`
+        ).join('\\n\\n')
+      : 'None identified'
+
+    // Build reflection questions
+    const reflectionText = actionPlan.weeklyCheckIn.prompts.map((prompt, idx) => 
+      `${idx + 1}. ${prompt}`
+    ).join('\\n')
+
+    const visionSummary = `
+HEALTH SUMMIT CHECK-IN
+======================
 
 YOUR VISION (1-2 years):
 ${formData.visionStatement || 'Not yet defined'}
@@ -272,21 +303,19 @@ ${formData.visionStatement || 'Not yet defined'}
 WHY IT MATTERS:
 ${formData.whyMatters || 'Not yet defined'}
 
-CURRENT PROGRESS:
-- Current Score: ${formData.currentScore || 5}/10
-- Readiness: ${formData.readiness || 5}/10
-- Time Capacity: ${formData.timeCapacity || 'Not set'}
+YOUR COMMITTED ACTIONS THIS WEEK:
+${actionsText}
 
-YOUR ACTION PLAN:
-${actionPlan.weeklyActions.length > 0 ? actionPlan.weeklyActions.map(item => `- ${item.area}: ${item.actions.join(', ')}`).join('\\n') : 'No actions defined'}
+OVERCOMING YOUR BARRIERS:
+${barriersText}
 
-TOP BARRIERS TO ADDRESS:
-${actionPlan.barrierStrategies.length > 0 ? actionPlan.barrierStrategies.map(item => `- ${item.barrier}: ${item.strategy}`).join('\\n') : 'None identified'}
+WEEKLY REFLECTION QUESTIONS:
+${reflectionText}
 
-HABITS TO FOCUS ON:
-${(formData.habitsToImprove || []).join(', ') || 'None selected'}
+Remember: ${actionPlan.weeklyCheckIn.reminderText}
 
-Review your full plan, celebrate progress, and adjust as needed!
+---
+Review your full plan at: ${window.location.origin}
     `.trim()
 
     const icsContent = `BEGIN:VCALENDAR
@@ -299,14 +328,14 @@ UID:${Date.now()}@healthvision.app
 DTSTAMP:${formatICSDate(now)}
 DTSTART:${startDate}
 DTEND:${endDate}
-SUMMARY:Review Your Health Summit
+SUMMARY:Habit Check-In
 DESCRIPTION:${visionSummary.replace(/\n/g, '\\n')}
 LOCATION:Health Summit App
 STATUS:CONFIRMED
 SEQUENCE:0
 BEGIN:VALARM
 TRIGGER:-PT1H
-DESCRIPTION:Health Summit Review Reminder
+DESCRIPTION:Habit Check-In Reminder
 ACTION:DISPLAY
 END:VALARM
 END:VEVENT
@@ -605,23 +634,24 @@ END:VCALENDAR`.trim()
 
                 {/* Action Buttons - After Finalized Plan */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-stone-200">
-                  {/* Remind Me Button with Dropdown */}
+                  {/* Create Calendar Reminder Button with Dropdown */}
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setShowReminderDropdown(!showReminderDropdown)}
                       className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
                     >
                       <Bell className="w-4 h-4" />
-                      Remind Me
+                      Create Calendar Reminder
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     
                     {showReminderDropdown && (
-                      <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-xl border border-stone-200 py-2 min-w-[160px] z-10">
-                        <button onClick={() => handleReminder('1week')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 1 Week</button>
-                        <button onClick={() => handleReminder('1month')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 1 Month</button>
-                        <button onClick={() => handleReminder('3months')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 3 Months</button>
-                        <button onClick={() => handleReminder('6months')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 6 Months</button>
+                      <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-xl border border-stone-200 py-2 min-w-[180px] z-10">
+                        <button onClick={() => handleReminder('today')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">Today</button>
+                        <button onClick={() => handleReminder('tomorrow')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">Tomorrow</button>
+                        <button onClick={() => handleReminder('3days')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 3 Days</button>
+                        <button onClick={() => handleReminder('1week')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In a Week</button>
+                        <button onClick={() => handleReminder('2weeks')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In Two Weeks</button>
                       </div>
                     )}
                   </div>
