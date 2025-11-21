@@ -151,11 +151,28 @@ const SummaryPage = ({ formData, onNavigate }) => {
       addText(formData.sustainableNotes)
     }
 
-    // Action Plan
+    // Action Plan - Show Finalized Plan if available
     addSection('YOUR PERSONALIZED ACTION PLAN')
     
-    // Check if AI-enhanced recommendations are available and being viewed
-    if (aiEnhanced && showAiView && Array.isArray(aiEnhanced)) {
+    // Check if plan is finalized and has selected actions
+    const finalizedActions = getSelectedActionsData()
+    if (isPlanFinalized && finalizedActions.length > 0) {
+      addText('Your Committed Actions for This Week:', 11, true)
+      addText('These are the actions you have chosen to focus on.', 9)
+      yPos += 3
+      
+      finalizedActions.forEach((item, index) => {
+        addText(`✓ ${index + 1}. ${item.action}`, 10, true)
+        if (item.type === 'ai') {
+          addText(`Why this works: ${item.why}`, 9)
+          addText(`💡 Tip: ${item.tip}`, 9)
+        } else {
+          addText('(Custom action)', 9)
+        }
+        yPos += 2
+      })
+    } else if (aiEnhanced && Array.isArray(aiEnhanced)) {
+      // Show all AI recommendations if plan not finalized
       addText('AI-Personalized Recommendations:', 11, true)
       addText('These actions have been tailored specifically to your situation, schedule, and goals.', 9)
       yPos += 3
