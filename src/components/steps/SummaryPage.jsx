@@ -595,7 +595,7 @@ END:VCALENDAR`.trim()
                     </p>
                   </div>
                   {getSelectedActionsData().map((item, index) => (
-                    <div key={index} className="p-4 rounded-lg border-2 border-green-300 bg-green-50">
+                    <div key={index} className="p-4 rounded-lg border-2 border-stone-200 bg-white">
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
                           ✓
