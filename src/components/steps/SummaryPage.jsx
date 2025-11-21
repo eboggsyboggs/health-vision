@@ -23,9 +23,20 @@ const SummaryPage = ({ formData, onNavigate }) => {
   const [showAddCustom, setShowAddCustom] = useState(false)
   const [newCustomAction, setNewCustomAction] = useState('')
 
-  // Auto-run AI enhancement on mount
+  // Check if user has sufficient data for personalization
+  const hasSufficientData = () => {
+    return (
+      formData.visionStatement && formData.visionStatement.trim() !== '' &&
+      formData.whyMatters && formData.whyMatters.trim() !== '' &&
+      formData.currentScore !== undefined &&
+      formData.readiness !== undefined &&
+      formData.timeCapacity && formData.timeCapacity.trim() !== ''
+    )
+  }
+
+  // Auto-run AI enhancement on mount if user has sufficient data
   useEffect(() => {
-    if (!aiEnhanced && !isEnhancing) {
+    if (!aiEnhanced && !isEnhancing && hasSufficientData()) {
       handleAIEnhancement()
     }
   }, []) // Run once on mount
@@ -521,6 +532,29 @@ END:VCALENDAR`.trim()
                   <p className="text-stone-600">Building your personalized plan...</p>
                 </div>
               </div>
+            )}
+
+            {/* Insufficient Data Message */}
+            {!aiEnhanced && !isEnhancing && !enhancementError && !hasSufficientData() && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Complete your profile to get personalized recommendations</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Fill out your vision, why it matters, current state, and time capacity in the previous steps to generate AI-personalized actions.
+                </p>
+              </div>
+            )}
+
+            {/* Manual Trigger Button (if data exists but AI hasn't run) */}
+            {!aiEnhanced && !isEnhancing && !enhancementError && hasSufficientData() && (
+              <button
+                onClick={handleAIEnhancement}
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <Wand2 className="w-5 h-5" />
+                Generate Personalized Plan
+              </button>
             )}
 
             {/* Error Message */}
