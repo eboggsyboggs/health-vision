@@ -1,5 +1,5 @@
 import React from 'react'
-import { Clock3, ArrowRight } from 'lucide-react'
+import { Clock3, ArrowRight, Check } from 'lucide-react'
 
 const RouteStep = ({ formData, updateFormData, onNext }) => {
   const timeOptions = [
@@ -37,9 +37,27 @@ const RouteStep = ({ formData, updateFormData, onNext }) => {
     { label: "Rest days", text: "Including rest days to avoid burnout. " }
   ]
 
-  const insertSuggestion = (field, suggestionText) => {
+  const insertSuggestion = (field, suggestionText, suggestionKey) => {
     const current = formData[field] || ''
-    updateFormData(field, current + suggestionText)
+    const clickedKey = `${field}_clicked`
+    const clickedSuggestions = formData[clickedKey] || []
+    
+    if (clickedSuggestions.includes(suggestionKey)) {
+      // Remove the suggestion text
+      const newText = current.replace(suggestionText, '')
+      updateFormData(field, newText)
+      updateFormData(clickedKey, clickedSuggestions.filter(key => key !== suggestionKey))
+    } else {
+      // Add the suggestion text
+      updateFormData(field, current + suggestionText)
+      updateFormData(clickedKey, [...clickedSuggestions, suggestionKey])
+    }
+  }
+  
+  const isSuggestionActive = (field, suggestionKey) => {
+    const clickedKey = `${field}_clicked`
+    const clickedSuggestions = formData[clickedKey] || []
+    return clickedSuggestions.includes(suggestionKey)
   }
 
   const toggleSupport = (option) => {
@@ -112,16 +130,20 @@ const RouteStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {preferredTimesSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('preferredTimes', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {preferredTimesSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('preferredTimes', `preferredTimes_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('preferredTimes', suggestion.text, `preferredTimes_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -145,16 +167,20 @@ const RouteStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {sustainableSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('sustainableNotes', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {sustainableSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('sustainableNotes', `sustainableNotes_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('sustainableNotes', suggestion.text, `sustainableNotes_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

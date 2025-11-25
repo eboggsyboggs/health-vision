@@ -1,5 +1,5 @@
 import React from 'react'
-import { Backpack, ArrowRight } from 'lucide-react'
+import { Backpack, ArrowRight, Check } from 'lucide-react'
 
 const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
   // Suggestion chips for base camp questions
@@ -39,9 +39,27 @@ const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
     { label: "Time management", text: "Improve time management. " }
   ]
 
-  const insertSuggestion = (field, suggestionText) => {
+  const insertSuggestion = (field, suggestionText, suggestionKey) => {
     const current = formData[field] || ''
-    updateFormData(field, current + suggestionText)
+    const clickedKey = `${field}_clicked`
+    const clickedSuggestions = formData[clickedKey] || []
+    
+    if (clickedSuggestions.includes(suggestionKey)) {
+      // Remove the suggestion text
+      const newText = current.replace(suggestionText, '')
+      updateFormData(field, newText)
+      updateFormData(clickedKey, clickedSuggestions.filter(key => key !== suggestionKey))
+    } else {
+      // Add the suggestion text
+      updateFormData(field, current + suggestionText)
+      updateFormData(clickedKey, [...clickedSuggestions, suggestionKey])
+    }
+  }
+  
+  const isSuggestionActive = (field, suggestionKey) => {
+    const clickedKey = `${field}_clicked`
+    const clickedSuggestions = formData[clickedKey] || []
+    return clickedSuggestions.includes(suggestionKey)
   }
 
   return (
@@ -83,16 +101,20 @@ const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {nonNegotiablesSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('nonNegotiables', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {nonNegotiablesSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('nonNegotiables', `nonNegotiables_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('nonNegotiables', suggestion.text, `nonNegotiables_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -119,16 +141,20 @@ const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {strengthsSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('strengths', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {strengthsSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('strengths', `strengths_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('strengths', suggestion.text, `strengths_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -155,16 +181,20 @@ const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {energizersSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('energizers', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {energizersSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('energizers', `energizers_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('energizers', suggestion.text, `energizers_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -191,16 +221,20 @@ const CardinalDirectionsStep = ({ formData, updateFormData, onNext }) => {
           <div className="mt-3">
             <p className="text-xs text-stone-500 mb-2">💡 Quick starts (click to add):</p>
             <div className="flex flex-wrap gap-2">
-              {gapsSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => insertSuggestion('gapsWants', suggestion.text)}
-                  className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all"
-                >
-                  {suggestion.label}
-                </button>
-              ))}
+              {gapsSuggestions.map((suggestion, idx) => {
+                const isActive = isSuggestionActive('gapsWants', `gapsWants_${idx}`)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => insertSuggestion('gapsWants', suggestion.text, `gapsWants_${idx}`)}
+                    className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition-all flex items-center gap-1.5"
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {suggestion.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
