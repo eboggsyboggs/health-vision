@@ -45,6 +45,8 @@ Provide 4-6 highly specific, personalized action steps for THIS WEEK that:
 4. Feel achievable given their readiness level
 5. Are concrete and actionable (not vague advice)
 
+IMPORTANT: Do NOT include specific days of the week (like "Monday, Wednesday, Friday" or "on Sundays") in the action text. Users will select their own days separately. Instead, use phrases like "three times this week" or "twice a week" if frequency is relevant.
+
 Format as a JSON array of objects with this structure:
 [
   {

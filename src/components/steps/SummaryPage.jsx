@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { FileText, Printer, Download, Sparkles, Heart, Map, Clock3, Edit2, Bell, ChevronDown, Target, TrendingUp, Lightbulb, Wand2, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { FileText, Sparkles, Heart, Map, Clock3, Edit2, Bell, Target, TrendingUp, Lightbulb, Wand2, Loader2, RefreshCw, Copy, Check } from 'lucide-react'
 import { generateActionPlan, generateMotivationalMessage } from '../../utils/planGenerator'
 import { enhanceActionPlan } from '../../utils/aiService'
 import jsPDF from 'jspdf'
 
 const SummaryPage = ({ formData, onNavigate }) => {
   const [activeTab, setActiveTab] = useState('plan') // 'summary' or 'plan'
-  const [showReminderDropdown, setShowReminderDropdown] = useState(false)
-  const dropdownRef = useRef(null)
+  const [copied, setCopied] = useState(false)
   
   // Generate the action plan
   const actionPlan = generateActionPlan(formData)
@@ -17,12 +16,19 @@ const SummaryPage = ({ formData, onNavigate }) => {
   const [aiEnhanced, setAiEnhanced] = useState(null)
   const [showAiView, setShowAiView] = useState(true) // Default to AI view
   const [isEnhancing, setIsEnhancing] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false) // Track refresh vs initial load
   const [enhancementError, setEnhancementError] = useState(null)
   const [selectedActions, setSelectedActions] = useState([])
+  const [selectedAiActions, setSelectedAiActions] = useState([]) // Store actual selected AI action objects
   const [customActions, setCustomActions] = useState([])
   const [showAddCustom, setShowAddCustom] = useState(false)
   const [newCustomAction, setNewCustomAction] = useState('')
   const [isPlanFinalized, setIsPlanFinalized] = useState(false)
+  const [dayCommitments, setDayCommitments] = useState({}) // Track day commitments per action
+  const [encouragementMessage] = useState(() => {
+    const messages = ['Nice!', 'Great!', 'Ok!']
+    return messages[Math.floor(Math.random() * messages.length)]
+  })
 
   // Check if user has sufficient data for personalization
   const hasSufficientData = () => {
@@ -42,25 +48,38 @@ const SummaryPage = ({ formData, onNavigate }) => {
     }
   }, []) // Run once on mount
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowReminderDropdown(false)
+  const handleCopyToClipboard = async () => {
+    const finalizedActions = getSelectedActionsData()
+    
+    let clipboardText = 'MY HABIT COMMITMENTS\n'
+    clipboardText += '===================\n\n'
+    
+    finalizedActions.forEach((item, index) => {
+      clipboardText += `${index + 1}. ${item.action}\n`
+      
+      const committedDays = dayCommitments[index] || []
+      if (committedDays.length > 0) {
+        clipboardText += `   Days: ${committedDays.join(', ')}\n`
       }
+      
+      if (item.type === 'ai') {
+        clipboardText += `   Why this works: ${item.why}\n`
+        clipboardText += `   💡 Tip: ${item.tip}\n`
+      }
+      
+      clipboardText += '\n'
+    })
+    
+    clipboardText += '---\n'
+    clipboardText += `Vision: ${formData.visionStatement || 'Not yet defined'}\n`
+    
+    try {
+      await navigator.clipboard.writeText(clipboardText)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
-
-    if (showReminderDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showReminderDropdown])
-
-  const handlePrint = () => {
-    window.print()
   }
 
   const handleDownload = () => {
@@ -163,6 +182,10 @@ const SummaryPage = ({ formData, onNavigate }) => {
       
       finalizedActions.forEach((item, index) => {
         addText(`✓ ${index + 1}. ${item.action}`, 10, true)
+        const committedDays = dayCommitments[index] || []
+        if (committedDays.length > 0) {
+          addText(`Days: ${committedDays.join(', ')}`, 9)
+        }
         if (item.type === 'ai') {
           addText(`Why this works: ${item.why}`, 9)
           addText(`💡 Tip: ${item.tip}`, 9)
@@ -173,8 +196,8 @@ const SummaryPage = ({ formData, onNavigate }) => {
       })
     } else if (aiEnhanced && Array.isArray(aiEnhanced)) {
       // Show all AI recommendations if plan not finalized
-      addText('AI-Personalized Recommendations:', 11, true)
-      addText('These actions have been tailored specifically to your situation, schedule, and goals.', 9)
+      addText('AI-Personalized Suggestions:', 11, true)
+      addText('These actions are tailored to your situation, schedule, and goals. Already doing some? Nice work. Choose 1–2 new ideas to focus on, or tap Refresh ideas for more options.', 9)
       yPos += 3
       
       aiEnhanced.forEach((item, index) => {
@@ -209,11 +232,17 @@ const SummaryPage = ({ formData, onNavigate }) => {
 
     if (actionPlan.habitRecommendations.length > 0) {
       yPos += 3
-      addText('Your Habit-Building Sequence:', 11, true)
-      actionPlan.habitRecommendations.forEach(item => {
-        addText(`Week ${item.week} (${item.priority}): ${item.habit}`, 10, true)
-        addText(`Tip: ${item.tip}`, 9)
-      })
+      addText('Your Plan: Start Small, Then Stack', 11, true)
+      addText('Each week, you\'ll choose 1–2 small habits to experiment with.', 9)
+      addText('Going from 0→100 is a recipe for burnout. Successful plans start with incremental, achievable actions that build momentum over time.', 9)
+      addText('As habits stick, you can extend, modify, or level them up—based on what actually worked last week.', 9)
+      if (actionPlan.habitRecommendations.length > 0) {
+        const habits = actionPlan.habitRecommendations.map(rec => rec.habit.toLowerCase())
+        const habitText = habits.length === 1 
+          ? habits[0] 
+          : `${habits[0]} and ${habits[1]}`
+        addText(`Based on your vision and needs, experiment with habits focused around ${habitText}.`, 9, true)
+      }
     }
 
     yPos += 3
@@ -232,126 +261,108 @@ const SummaryPage = ({ formData, onNavigate }) => {
     doc.save(`health-summit-plan-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
-  const handleReminder = (period) => {
+  const handleReminder = () => {
     const now = new Date()
-    let reminderDate = new Date(now)
-    
-    switch(period) {
-      case 'today':
-        // Set to 6 PM today
-        reminderDate.setHours(18, 0, 0, 0)
-        break
-      case 'tomorrow':
-        reminderDate.setDate(now.getDate() + 1)
-        reminderDate.setHours(9, 0, 0, 0)
-        break
-      case '3days':
-        reminderDate.setDate(now.getDate() + 3)
-        reminderDate.setHours(9, 0, 0, 0)
-        break
-      case '1week':
-        reminderDate.setDate(now.getDate() + 7)
-        reminderDate.setHours(9, 0, 0, 0)
-        break
-      case '2weeks':
-        reminderDate.setDate(now.getDate() + 14)
-        reminderDate.setHours(9, 0, 0, 0)
-        break
-      default:
-        reminderDate.setDate(now.getDate() + 7)
-        reminderDate.setHours(9, 0, 0, 0)
-    }
-
     const formatICSDate = (date) => {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     }
 
-    const startDate = formatICSDate(reminderDate)
-    const endDate = formatICSDate(new Date(reminderDate.getTime() + 60 * 60 * 1000))
+    // Map day names to day numbers (0 = Sunday, 1 = Monday, etc.)
+    const dayNameToNumber = {
+      'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+    }
+
+    // Get the next occurrence of a specific day
+    const getNextDayOccurrence = (dayName, startFromDate = new Date()) => {
+      const targetDay = dayNameToNumber[dayName]
+      const date = new Date(startFromDate)
+      const currentDay = date.getDay()
+      let daysUntilTarget = targetDay - currentDay
+      
+      // If the day has passed this week, get next week's occurrence
+      if (daysUntilTarget <= 0) {
+        daysUntilTarget += 7
+      }
+      
+      date.setDate(date.getDate() + daysUntilTarget)
+      return date
+    }
 
     // Build finalized actions content
     const finalizedActions = getSelectedActionsData()
-    const actionsText = finalizedActions.length > 0 
-      ? finalizedActions.map((item, index) => {
-          let text = `${index + 1}. ${item.action}`
+    
+    // Create events array
+    const events = []
+    
+    finalizedActions.forEach((item, index) => {
+      const committedDays = dayCommitments[index] || []
+      
+      if (committedDays.length > 0) {
+        // Create an event for each committed day
+        committedDays.forEach(day => {
+          const eventDate = getNextDayOccurrence(day, now)
+          // Set default time to 9 AM
+          eventDate.setHours(9, 0, 0, 0)
+          
+          const startDate = formatICSDate(eventDate)
+          const endDate = formatICSDate(new Date(eventDate.getTime() + 20 * 60 * 1000)) // 20 minutes
+          
+          let description = `${item.action}`
           if (item.type === 'ai') {
-            text += `\\n   Why: ${item.why}\\n   Tip: ${item.tip}`
+            description += `\\n\\nWhy this works: ${item.why}\\n\\n💡 Tip: ${item.tip}`
           }
-          return text
-        }).join('\\n\\n')
-      : 'No actions selected yet'
+          description += `\\n\\n---\\nYour Vision: ${formData.visionStatement || 'Not yet defined'}`
+          
+          events.push({
+            uid: `${Date.now()}-${index}-${day}@healthvision.app`,
+            startDate,
+            endDate,
+            summary: item.action,
+            description: description.replace(/\n/g, '\\n')
+          })
+        })
+      }
+    })
 
-    // Build barriers content
-    const barriersText = actionPlan.barrierStrategies.length > 0 
-      ? actionPlan.barrierStrategies.map(item => 
-          `• ${item.barrier}\\n  Strategy: ${item.strategy}\\n  Tips: ${item.tips.join(', ')}`
-        ).join('\\n\\n')
-      : 'None identified'
-
-    // Build reflection questions
-    const reflectionText = actionPlan.weeklyCheckIn.prompts.map((prompt, idx) => 
-      `${idx + 1}. ${prompt}`
-    ).join('\\n')
-
-    const visionSummary = `
-HEALTH SUMMIT CHECK-IN
-======================
-
-YOUR VISION (1-2 years):
-${formData.visionStatement || 'Not yet defined'}
-
-WHY IT MATTERS:
-${formData.whyMatters || 'Not yet defined'}
-
-YOUR COMMITTED ACTIONS THIS WEEK:
-${actionsText}
-
-OVERCOMING YOUR BARRIERS:
-${barriersText}
-
-WEEKLY REFLECTION QUESTIONS:
-${reflectionText}
-
-Remember: ${actionPlan.weeklyCheckIn.reminderText}
-
----
-Review your full plan at: ${window.location.origin}
-    `.trim()
-
-    const icsContent = `BEGIN:VCALENDAR
+    // Build ICS content with all events
+    let icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Health Summit//Reminder//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-BEGIN:VEVENT
-UID:${Date.now()}@healthvision.app
+`
+
+    events.forEach(event => {
+      icsContent += `BEGIN:VEVENT
+UID:${event.uid}
 DTSTAMP:${formatICSDate(now)}
-DTSTART:${startDate}
-DTEND:${endDate}
-SUMMARY:Habit Check-In
-DESCRIPTION:${visionSummary.replace(/\n/g, '\\n')}
+DTSTART:${event.startDate}
+DTEND:${event.endDate}
+SUMMARY:${event.summary}
+DESCRIPTION:${event.description}
 LOCATION:Health Summit App
 STATUS:CONFIRMED
 SEQUENCE:0
 BEGIN:VALARM
-TRIGGER:-PT1H
-DESCRIPTION:Habit Check-In Reminder
+TRIGGER:-PT15M
+DESCRIPTION:Habit Reminder
 ACTION:DISPLAY
 END:VALARM
 END:VEVENT
-END:VCALENDAR`.trim()
+`
+    })
 
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
+    icsContent += `END:VCALENDAR`
+
+    const blob = new Blob([icsContent.trim()], { type: 'text/calendar;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `health-summit-reminder-${period}.ics`
+    a.download = `health-summit-habits.ics`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
-    setShowReminderDropdown(false)
   }
 
   const handleAIEnhancement = async () => {
@@ -367,6 +378,39 @@ END:VCALENDAR`.trim()
       setEnhancementError(error.message || 'Failed to enhance plan. Please check your API key.')
     } finally {
       setIsEnhancing(false)
+    }
+  }
+
+  const handleRefreshSuggestions = async () => {
+    setIsRefreshing(true)
+    setIsEnhancing(true)
+    setEnhancementError(null)
+    
+    try {
+      // Save currently selected actions before refreshing
+      const currentlySelected = selectedActions.map(index => aiEnhanced[index])
+      
+      // Clear the selected indices FIRST to prevent index conflicts
+      setSelectedActions([])
+      
+      // Then merge with previously selected actions
+      setSelectedAiActions(prev => {
+        const combined = [...prev, ...currentlySelected]
+        const unique = combined.filter((item, index, self) => 
+          index === self.findIndex(t => t.action === item.action)
+        )
+        return unique
+      })
+      
+      // Get new suggestions
+      const enhanced = await enhanceActionPlan(formData, actionPlan)
+      setAiEnhanced(enhanced)
+    } catch (error) {
+      console.error('Enhancement error:', error)
+      setEnhancementError(error.message || 'Failed to refresh suggestions. Please check your API key.')
+    } finally {
+      setIsEnhancing(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -391,7 +435,16 @@ END:VCALENDAR`.trim()
   }
 
   const handleFinalizePlan = () => {
-    if (selectedActions.length > 0 || customActions.length > 0) {
+    if (selectedActions.length > 0 || selectedAiActions.length > 0 || customActions.length > 0) {
+      // Initialize day commitments for each action if not already set
+      const actionsData = getSelectedActionsData()
+      const initialCommitments = {}
+      actionsData.forEach((_, index) => {
+        if (!dayCommitments[index]) {
+          initialCommitments[index] = []
+        }
+      })
+      setDayCommitments(prev => ({ ...prev, ...initialCommitments }))
       setIsPlanFinalized(true)
     }
   }
@@ -400,16 +453,32 @@ END:VCALENDAR`.trim()
     setIsPlanFinalized(false)
   }
 
+  const toggleDayCommitment = (actionIndex, day) => {
+    setDayCommitments(prev => {
+      const currentDays = prev[actionIndex] || []
+      const newDays = currentDays.includes(day)
+        ? currentDays.filter(d => d !== day)
+        : [...currentDays, day]
+      return { ...prev, [actionIndex]: newDays }
+    })
+  }
+
   const getSelectedActionsData = () => {
-    const aiActions = selectedActions.map(index => ({
+    // Combine selected AI actions from current suggestions
+    const currentAiActions = selectedActions.map(index => ({
       type: 'ai',
       ...aiEnhanced[index]
+    }))
+    // Add previously selected AI actions
+    const previousAiActions = selectedAiActions.map(action => ({
+      type: 'ai',
+      ...action
     }))
     const customActionsData = customActions.map(action => ({
       type: 'custom',
       action: action
     }))
-    return [...aiActions, ...customActionsData]
+    return [...previousAiActions, ...currentAiActions, ...customActionsData]
   }
 
   const isEmpty = (value) => !value || value.trim() === ''
@@ -478,37 +547,34 @@ END:VCALENDAR`.trim()
           {/* Habit Recommendations */}
           {actionPlan.habitRecommendations.length > 0 && (
             <div className="bg-white rounded-2xl shadow-xl border border-stone-200 p-6 mb-6">
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="p-3 bg-blue-100 rounded-xl">
                   <TrendingUp className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-stone-900">Your Habit-Building Sequence</h3>
-                  <p className="text-sm text-stone-600">Prioritized based on your readiness</p>
+                  <h3 className="text-2xl font-bold text-stone-900">Your Plan: Start Small, Then Stack</h3>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {actionPlan.habitRecommendations.map((item, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex-shrink-0 w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                      {item.week}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-stone-900">{item.habit}</h4>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          item.priority === 'Primary' 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-blue-200 text-blue-800'
-                        }`}>
-                          {item.priority}
-                        </span>
-                      </div>
-                      <p className="text-sm text-stone-600">{item.tip}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-3 mb-4">
+                <p className="text-stone-700">
+                  Each week, you'll choose 1–2 small habits to experiment with.
+                </p>
+                <p className="text-stone-700">
+                  Going from 0→100 is a recipe for burnout. Successful plans start with incremental, achievable actions that build momentum over time.
+                </p>
+                <p className="text-stone-700">
+                  As habits stick, you can extend, modify, or level them up—based on what actually worked last week.
+                </p>
+                {actionPlan.habitRecommendations.length > 0 && (
+                  <p className="text-stone-700 pt-2">
+                    <strong>Based on your vision and needs, experiment with habits focused around {
+                      actionPlan.habitRecommendations.length === 1
+                        ? actionPlan.habitRecommendations[0]?.habit.toLowerCase()
+                        : `${actionPlan.habitRecommendations[0]?.habit.toLowerCase()} and ${actionPlan.habitRecommendations[1]?.habit.toLowerCase()}`
+                    }.</strong>
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -521,7 +587,7 @@ END:VCALENDAR`.trim()
                   <Target className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-stone-900">Build Your Plan</h3>
+                  <h3 className="text-2xl font-bold text-stone-900">Habit Experiments</h3>
                 </div>
               </div>
               {isPlanFinalized && (
@@ -535,11 +601,11 @@ END:VCALENDAR`.trim()
               )}
             </div>
             {!isPlanFinalized && (
-              <p className="text-sm text-stone-600 mb-6">Choose at least 1 (but no more than 3) actions to start with this week</p>
+              <p className="text-sm text-stone-600 mb-6">Choose 1–3 habits to start with this week.</p>
             )}
 
-            {/* Loading State */}
-            {isEnhancing && (
+            {/* Loading State - Only show during initial enhancement, not refresh */}
+            {isEnhancing && !isRefreshing && (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-3" />
@@ -555,7 +621,7 @@ END:VCALENDAR`.trim()
                   <strong>Complete your profile to get personalized recommendations</strong>
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  Fill out your vision, why it matters, current state, and time capacity in the previous steps to generate AI-personalized actions.
+                  Fill out your vision, why it matters, current state, and time capacity in the previous steps to generate AI-personalized suggestions.
                 </p>
               </div>
             )}
@@ -584,14 +650,29 @@ END:VCALENDAR`.trim()
             )}
 
             {/* AI Personalized Plan Header - Only show in edit mode */}
-            {aiEnhanced && !isEnhancing && !isPlanFinalized && (
+            {aiEnhanced && !isPlanFinalized && (
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border-2 border-purple-200 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <h4 className="font-semibold text-purple-900">AI-Personalized Plan</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    <h4 className="font-semibold text-purple-900">AI-Personalized Suggestions</h4>
+                  </div>
+                  <button
+                    onClick={handleRefreshSuggestions}
+                    disabled={isEnhancing}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-white hover:bg-purple-50 border border-purple-300 rounded-lg transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isEnhancing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Refresh ideas
+                  </button>
                 </div>
                 <p className="text-sm text-purple-800">
-                  These actions have been tailored specifically to your situation, schedule, and goals.
+                  These actions are tailored to your situation, schedule, and goals.
+                  Already doing some? Nice work. Choose 1–2 new ideas to focus on, or tap Refresh ideas for more options.
                 </p>
               </div>
             )}
@@ -602,15 +683,18 @@ END:VCALENDAR`.trim()
                 <div className="space-y-3 mb-6">
                   <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200 mb-4">
                     <p className="text-sm text-green-800 font-medium">
-                      ✓ Your plan is set! Here's what you're committing to this week:
+                      {encouragementMessage} Let's lock in when you'll try {getSelectedActionsData().length === 1 ? 'this' : 'these'}—take a quick look at your calendar and choose days that realistically work for you.
+                    </p>
+                    <p className="text-sm text-green-700 mt-2">
+                      People are far more likely to follow through when they decide <em>when</em> they'll act, not just <em>what</em> they'll do.
                     </p>
                   </div>
-                  {getSelectedActionsData().map((item, index) => (
-                    <div key={index} className="p-4 rounded-lg border-2 border-stone-200 bg-white">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                          ✓
-                        </div>
+                  {getSelectedActionsData().map((item, index) => {
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    const committedDays = dayCommitments[index] || []
+                    
+                    return (
+                      <div key={index} className="p-4 rounded-lg border-2 border-stone-200 bg-white">
                         <div className="flex-1">
                           <p className="font-semibold text-stone-900 mb-2">{item.action}</p>
                           {item.type === 'ai' && (
@@ -618,74 +702,125 @@ END:VCALENDAR`.trim()
                               <p className="text-sm text-stone-700 mb-1">
                                 <strong>Why this works:</strong> {item.why}
                               </p>
-                              <p className="text-sm text-stone-600">
+                              <p className="text-sm text-stone-600 mb-3">
                                 <strong>💡 Tip:</strong> {item.tip}
                               </p>
                             </>
                           )}
                           {item.type === 'custom' && (
-                            <p className="text-xs text-blue-600">Custom action</p>
+                            <p className="text-xs text-blue-600 mb-3">Custom action</p>
                           )}
+                          
+                          {/* Day Commitment Chips */}
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {days.map(day => (
+                              <button
+                                key={day}
+                                onClick={() => toggleDayCommitment(index, day)}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                  committedDays.includes(day)
+                                    ? 'bg-green-600 text-white shadow-sm'
+                                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 {/* Action Buttons - After Finalized Plan */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-stone-200">
-                  {/* Create Calendar Reminder Button with Dropdown */}
-                  <div className="relative" ref={dropdownRef}>
-                    <button
-                      onClick={() => setShowReminderDropdown(!showReminderDropdown)}
-                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Bell className="w-4 h-4" />
-                      Create Calendar Reminder
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    
-                    {showReminderDropdown && (
-                      <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-xl border border-stone-200 py-2 min-w-[180px] z-10">
-                        <button onClick={() => handleReminder('today')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">Today</button>
-                        <button onClick={() => handleReminder('tomorrow')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">Tomorrow</button>
-                        <button onClick={() => handleReminder('3days')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In 3 Days</button>
-                        <button onClick={() => handleReminder('1week')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In a Week</button>
-                        <button onClick={() => handleReminder('2weeks')} className="w-full text-left px-4 py-2 hover:bg-stone-100 transition-colors text-stone-700">In Two Weeks</button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button onClick={handlePrint} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all">
-                    <Printer className="w-4 h-4" />
-                    Print
+                  {/* Create Calendar Reminder Button */}
+                  <button
+                    onClick={handleReminder}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
+                  >
+                    <Bell className="w-4 h-4" />
+                    Create Calendar Reminder
                   </button>
-                  <button onClick={handleDownload} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all">
-                    <Download className="w-4 h-4" />
-                    Download PDF
+
+                  <button 
+                    onClick={handleCopyToClipboard}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy to Clipboard
+                      </>
+                    )}
                   </button>
                 </div>
               </>
             ) : (
               <>
-                {/* AI Enhanced Actions with Checkboxes */}
-                {aiEnhanced && !isEnhancing && Array.isArray(aiEnhanced) && (
+                {/* Previously Selected AI Actions */}
+                {selectedAiActions.length > 0 && (
                   <div className="space-y-3 mb-4">
-                    {aiEnhanced.map((item, index) => (
+                    {selectedAiActions.map((item, index) => (
                       <div 
-                        key={index} 
-                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                          selectedActions.includes(index)
-                            ? 'bg-green-50 border-green-300'
-                            : 'bg-white border-stone-200 hover:border-stone-300'
-                        }`}
-                        onClick={() => toggleActionSelection(index)}
+                        key={`selected-${index}`} 
+                        className="p-4 rounded-lg border-2 transition-all cursor-pointer bg-green-50 border-green-300 hover:border-green-400 hover:shadow-sm"
+                        onClick={() => {
+                          setSelectedAiActions(prev => prev.filter((_, i) => i !== index))
+                        }}
                       >
                         <div className="flex items-start gap-3">
                           <input
                             type="checkbox"
-                            checked={selectedActions.includes(index)}
-                            onChange={() => toggleActionSelection(index)}
+                            checked={true}
+                            onChange={() => {
+                              setSelectedAiActions(prev => prev.filter((_, i) => i !== index))
+                            }}
+                            className="mt-1 w-5 h-5 text-green-600 rounded border-stone-300 focus:ring-green-500 cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1">
+                            <p className="font-semibold text-stone-900 mb-2">{item.action}</p>
+                            <p className="text-sm text-purple-800 mb-2">
+                              <strong>Why this works:</strong> {item.why}
+                            </p>
+                            <p className="text-sm text-stone-600">
+                              <strong>💡 Tip:</strong> {item.tip}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* AI Enhanced Actions with Checkboxes */}
+                {aiEnhanced && (!isEnhancing || isRefreshing) && Array.isArray(aiEnhanced) && (
+                  <div className="space-y-3 mb-4">
+                    {aiEnhanced
+                      .map((item, originalIndex) => ({ item, originalIndex }))
+                      .filter(({ item }) => !selectedAiActions.some(selected => selected.action === item.action))
+                      .map(({ item, originalIndex }) => (
+                      <div 
+                        key={originalIndex} 
+                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                          selectedActions.includes(originalIndex)
+                            ? 'bg-green-50 border-green-300'
+                            : 'bg-white border-stone-200 hover:border-stone-300'
+                        }`}
+                        onClick={() => toggleActionSelection(originalIndex)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedActions.includes(originalIndex)}
+                            onChange={() => toggleActionSelection(originalIndex)}
                             className="mt-1 w-5 h-5 text-green-600 rounded border-stone-300 focus:ring-green-500 cursor-pointer"
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -770,20 +905,20 @@ END:VCALENDAR`.trim()
                 )}
 
                 {/* Finalize Plan Button */}
-                {aiEnhanced && !isEnhancing && (
+                {aiEnhanced && (!isEnhancing || isRefreshing) && (
                   <div className="mt-6">
                     <button
                       onClick={handleFinalizePlan}
-                      disabled={selectedActions.length === 0 && customActions.length === 0}
+                      disabled={selectedActions.length === 0 && selectedAiActions.length === 0 && customActions.length === 0}
                       className={`w-full py-3 font-bold rounded-lg shadow-md transition-all ${
-                        selectedActions.length > 0 || customActions.length > 0
+                        selectedActions.length > 0 || selectedAiActions.length > 0 || customActions.length > 0
                           ? 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg'
                           : 'bg-stone-300 text-stone-500 cursor-not-allowed'
                       }`}
                     >
                       Finalize Plan
                     </button>
-                    {selectedActions.length === 0 && customActions.length === 0 && (
+                    {selectedActions.length === 0 && selectedAiActions.length === 0 && customActions.length === 0 && (
                       <p className="text-xs text-stone-500 text-center mt-2">
                         Select at least one action to finalize your plan
                       </p>

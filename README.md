@@ -27,6 +27,14 @@ Climb Your Health Summit guides users through a structured 4-step framework usin
   - Enhances rule-based plan with context-specific recommendations
   - Provides "why this works" and practical tips for each action
   - Toggle between AI-enhanced and original plan
+- **Auto-Save Progress** (Optional): 
+  - Automatically saves journey progress with Supabase
+  - Resume from where you left off on any device
+  - No account required - uses anonymous sessions
+- **Analytics Tracking** (Optional):
+  - Track user behavior with PostHog
+  - Session recordings to improve UX
+  - Privacy-focused with input masking
 - **Tab Navigation**: Switch between Action Plan and full Summary
 - **PDF Download**: Export complete plan with green-themed formatting
 - **Calendar Reminders**: Download .ics files with full plan details
@@ -58,10 +66,11 @@ cd health-summit
 npm install
 ```
 
-3. **(Optional) Set up AI Enhancement**:
+3. **(Optional) Set up integrations**:
    - Copy `.env.example` to `.env`
-   - Add your OpenAI API key: `VITE_OPENAI_API_KEY=sk-your-key-here`
-   - See `AI_SETUP.md` for detailed instructions
+   - **AI Enhancement**: Add your OpenAI API key (see `AI_SETUP.md`)
+   - **Analytics**: Add your PostHog API key (see `POSTHOG_SETUP.md`)
+   - **Backend**: Add your Supabase credentials (see `SUPABASE_SETUP.md`)
 
 4. Start the development server:
 ```bash
@@ -104,6 +113,8 @@ The app uses a warm, earthy color palette (stone and amber tones) to create a gr
 - **Lucide React**: Beautiful, consistent icons
 - **jsPDF**: PDF generation
 - **OpenAI API**: Optional AI-powered personalization (GPT-4o-mini)
+- **PostHog**: Optional analytics and session recording
+- **Supabase**: Optional backend for data persistence
 - **PostCSS**: CSS processing
 
 ## 📄 License

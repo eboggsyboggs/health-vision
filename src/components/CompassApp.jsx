@@ -5,6 +5,8 @@ import CardinalDirectionsStep from './steps/CardinalDirectionsStep'
 import TerrainStep from './steps/TerrainStep'
 import RouteStep from './steps/RouteStep'
 import SummaryPage from './steps/SummaryPage'
+import { trackEvent } from '../lib/posthog'
+import { saveJourney, loadJourney } from '../services/journeyService'
 
 const CompassApp = ({ onBack }) => {
   const [currentStep, setCurrentStep] = useState('intro')
@@ -31,10 +33,38 @@ const CompassApp = ({ onBack }) => {
     supportNeeds: [],
   })
 
-  // Jump to top whenever step changes
+  // Load saved journey on mount
+  useEffect(() => {
+    const loadSavedJourney = async () => {
+      const result = await loadJourney()
+      if (result.success && result.data) {
+        setFormData(result.data.form_data)
+        setCurrentStep(result.data.current_step || 'intro')
+      }
+    }
+    loadSavedJourney()
+  }, [])
+
+  // Jump to top whenever step changes and track navigation
   useEffect(() => {
     window.scrollTo(0, 0)
+    if (currentStep !== 'intro') {
+      trackEvent('step_viewed', { step: currentStep })
+    }
   }, [currentStep])
+
+  // Auto-save journey data whenever formData or currentStep changes
+  useEffect(() => {
+    const autoSave = async () => {
+      if (currentStep !== 'intro') {
+        await saveJourney(formData, currentStep)
+      }
+    }
+    
+    // Debounce auto-save by 1 second
+    const timeoutId = setTimeout(autoSave, 1000)
+    return () => clearTimeout(timeoutId)
+  }, [formData, currentStep])
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
