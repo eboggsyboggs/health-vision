@@ -608,7 +608,7 @@ END:VEVENT
         >
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4" />
-            Your Action Plan
+            My Plan
           </div>
         </button>
         <button
@@ -621,7 +621,7 @@ END:VEVENT
         >
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Summary of Answers
+            My Vision
           </div>
         </button>
       </div>
