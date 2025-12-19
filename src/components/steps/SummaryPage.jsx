@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Sparkles, Heart, Map, Clock3, Edit2, Bell, Target, TrendingUp, Lightbulb, Wand2, Loader2, RefreshCw, Copy, Check, CheckCircle } from 'lucide-react'
+import { FileText, Sparkles, Heart, Map, Clock3, Edit2, Bell, Target, TrendingUp, Lightbulb, Wand2, Loader2, RefreshCw, Copy, Check, CheckCircle, Mountain } from 'lucide-react'
 import { generateActionPlan, generateMotivationalMessage } from '../../utils/planGenerator'
 import { enhanceActionPlan } from '../../utils/aiService'
 import { saveHabitsForWeek } from '../../services/habitService'
@@ -1123,12 +1123,12 @@ END:VEVENT
 
           {/* Summary Content */}
           <div className="bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden">
-        {/* Step 1: Vision Setting */}
+        {/* Health Summit */}
         <section className="p-6 border-b border-stone-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-green-800 flex items-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              Step 1: Vision Setting
+              <Mountain className="w-5 h-5" />
+              Health Summit
             </h3>
             <button onClick={() => onNavigate('vision')} className="no-print flex items-center gap-1 text-sm text-stone-600 hover:text-green-600 transition-colors" title="Edit this section">
               <Edit2 className="w-4 h-4" />
@@ -1137,50 +1137,38 @@ END:VEVENT
           </div>
           
           <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-stone-600 mb-1">Health Summit (1-2 years)</h4>
-              <p className="text-stone-800 leading-relaxed">
-                {isEmpty(formData.visionStatement) ? <span className="text-stone-400 italic text-sm">Not yet defined</span> : formData.visionStatement}
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold text-stone-600 mb-1">How I Feel</h4>
-              <p className="text-stone-800 leading-relaxed">
-                {isEmpty(formData.feelingState) ? <span className="text-stone-400 italic text-sm">Not yet defined</span> : formData.feelingState}
-              </p>
-            </div>
-
-            {!isEmpty(formData.appearanceConfidence) && (
-              <div>
-                <h4 className="text-sm font-semibold text-stone-600 mb-1">How I Look & Carry Myself</h4>
-                <p className="text-stone-800 text-sm leading-relaxed">{formData.appearanceConfidence}</p>
-              </div>
-            )}
-
-            {!isEmpty(formData.futureAbilities) && (
-              <div>
-                <h4 className="text-sm font-semibold text-stone-600 mb-1">What I'm Able to Do</h4>
-                <p className="text-stone-800 text-sm leading-relaxed">{formData.futureAbilities}</p>
-              </div>
-            )}
-
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <h4 className="text-sm font-semibold text-green-900 mb-2">💚 Why This Matters</h4>
-              <p className="text-stone-800 text-sm leading-relaxed mb-3">
-                {isEmpty(formData.whyMatters) ? <span className="text-stone-400 italic">Not yet defined</span> : formData.whyMatters}
-              </p>
-              {!isArrayEmpty(formData.motivationDrivers) && (
-                <div>
-                  <p className="text-xs font-semibold text-stone-600 mb-2">My Biggest Drivers:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.motivationDrivers.map((driver) => (
-                      <span key={driver} className="px-3 py-1 bg-green-200 text-green-900 text-xs font-medium rounded-full">{driver}</span>
-                    ))}
-                  </div>
-                </div>
+            <p className="text-stone-800 leading-relaxed">
+              {isEmpty(formData.visionStatement) && isEmpty(formData.feelingState) && isEmpty(formData.whyMatters) ? (
+                <span className="text-stone-400 italic text-sm">Not yet defined</span>
+              ) : (
+                <>
+                  {!isEmpty(formData.visionStatement) && formData.visionStatement}
+                  {!isEmpty(formData.feelingState) && (
+                    <>{!isEmpty(formData.visionStatement) && ' '}{formData.feelingState}</>
+                  )}
+                  {!isEmpty(formData.appearanceConfidence) && (
+                    <>{(!isEmpty(formData.visionStatement) || !isEmpty(formData.feelingState)) && ' '}{formData.appearanceConfidence}</>
+                  )}
+                  {!isEmpty(formData.futureAbilities) && (
+                    <>{(!isEmpty(formData.visionStatement) || !isEmpty(formData.feelingState) || !isEmpty(formData.appearanceConfidence)) && ' '}{formData.futureAbilities}</>
+                  )}
+                  {!isEmpty(formData.whyMatters) && (
+                    <>{(!isEmpty(formData.visionStatement) || !isEmpty(formData.feelingState) || !isEmpty(formData.appearanceConfidence) || !isEmpty(formData.futureAbilities)) && ' '}This matters because {formData.whyMatters}</>
+                  )}
+                </>
               )}
-            </div>
+            </p>
+
+            {!isArrayEmpty(formData.motivationDrivers) && (
+              <div>
+                <p className="text-xs font-semibold text-stone-600 mb-2">My Biggest Drivers:</p>
+                <div className="flex flex-wrap gap-2">
+                  {formData.motivationDrivers.map((driver) => (
+                    <span key={driver} className="px-3 py-1 bg-green-200 text-green-900 text-xs font-medium rounded-full">{driver}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
