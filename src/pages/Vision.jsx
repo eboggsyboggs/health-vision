@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Flag, Backpack, TrendingUp, Clock3, FileText, ArrowRight, ArrowLeft, Check } from 'lucide-react'
 import { trackEvent } from '../lib/posthog'
 import { saveJourney, loadJourney } from '../services/journeyService'
@@ -8,9 +8,12 @@ import CardinalDirectionsStep from '../components/steps/CardinalDirectionsStep'
 import TerrainStep from '../components/steps/TerrainStep'
 import RouteStep from '../components/steps/RouteStep'
 import SummaryPage from '../components/steps/SummaryPage'
+import VisionDisplay from '../components/VisionDisplay'
 
 export default function Vision() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const viewMode = searchParams.get('view')
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useState({
     visionStatement: '',
@@ -80,6 +83,11 @@ export default function Vision() {
       const result = await loadJourney()
       if (result.success && result.data) {
         setFormData(result.data.form_data)
+        
+        // If in display mode, don't change the step
+        if (viewMode === 'display') {
+          return
+        }
         
         // Check if vision has been completed (has visionStatement)
         const hasCompletedVision = result.data.form_data?.visionStatement && 
@@ -163,6 +171,11 @@ export default function Vision() {
       default:
         return <IntroPage onNext={handleNext} />
     }
+  }
+
+  // If in display mode, show simplified vision view
+  if (viewMode === 'display') {
+    return <VisionDisplay formData={formData} />
   }
 
   return (

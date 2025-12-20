@@ -7,7 +7,7 @@
 
 // Global pilot start date - set this to when the pilot begins
 // Format: YYYY-MM-DD
-const PILOT_START_DATE = import.meta.env.VITE_PILOT_START_DATE || '2025-01-06'
+const PILOT_START_DATE = import.meta.env.VITE_PILOT_START_DATE || '2026-01-11'
 
 /**
  * Get the current week number for the pilot

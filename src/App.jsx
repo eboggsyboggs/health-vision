@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import PilotIntake from './pages/PilotIntake'
 import Start from './pages/Start'
 import Vision from './pages/Vision'
+import Habits from './pages/Habits'
 import AuthCallback from './pages/AuthCallback'
 import AuthTest from './pages/AuthTest'
 import Dashboard from './pages/Dashboard'
@@ -75,6 +76,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/habits" 
+          element={
+            <ProtectedRoute>
+              <Habits />
             </ProtectedRoute>
           } 
         />

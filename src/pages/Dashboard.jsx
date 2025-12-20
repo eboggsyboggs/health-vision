@@ -217,7 +217,7 @@ export default function Dashboard() {
 
         {/* Vision Section */}
         <button
-          onClick={() => navigate('/vision')}
+          onClick={() => navigate('/vision?view=display')}
           className="w-full bg-white rounded-2xl shadow-lg p-8 text-left hover:shadow-xl transition group mb-6"
         >
           <div className="flex items-start justify-between mb-4">
