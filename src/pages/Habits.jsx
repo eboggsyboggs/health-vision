@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Target, Save, Loader2, Edit2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Target, Save, Loader2, Edit2, CheckCircle, Trash2, Plus } from 'lucide-react'
 import { getCurrentWeekHabits, deleteHabitsForWeek, saveHabitsForWeek } from '../services/habitService'
 import { getCurrentWeekNumber, getCurrentWeekDateRange } from '../utils/weekCalculator'
+import { formatDaysDisplay, convertShortToFullDays } from '../utils/formatDays'
 
 export default function Habits() {
   const navigate = useNavigate()
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+  const [editingHabitIndex, setEditingHabitIndex] = useState(null)
   const [weekNumber, setWeekNumber] = useState(1)
   const [weekDateRange, setWeekDateRange] = useState('')
   const [dayCommitments, setDayCommitments] = useState({})
   const [timePreferences, setTimePreferences] = useState({})
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, habitIndex: null, habitName: '' })
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const dayMap = {
@@ -109,7 +111,7 @@ export default function Habits() {
     }))
   }
 
-  const handleSave = async () => {
+  const handleSaveHabit = async (habitIndex) => {
     setSaving(true)
     
     try {
@@ -149,7 +151,7 @@ export default function Habits() {
       
       if (success) {
         await loadHabits()
-        setIsEditing(false)
+        setEditingHabitIndex(null)
       } else {
         alert('Failed to save habits. Please try again.')
       }
@@ -161,9 +163,69 @@ export default function Habits() {
     }
   }
 
-  const handleCancel = () => {
-    setIsEditing(false)
+  const handleCancelEdit = (habitIndex) => {
+    setEditingHabitIndex(null)
     loadHabits() // Reload to reset changes
+  }
+
+  const openDeleteModal = (habitIndex, habitName) => {
+    setDeleteModal({ isOpen: true, habitIndex, habitName })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, habitIndex: null, habitName: '' })
+  }
+
+  const confirmDeleteHabit = async () => {
+    const { habitIndex, habitName } = deleteModal
+    closeDeleteModal()
+    setSaving(true)
+    
+    try {
+      // Get all habits except the one being deleted
+      const habitGroups = {}
+      habits.forEach(habit => {
+        if (!habitGroups[habit.habit_name]) {
+          habitGroups[habit.habit_name] = habit
+        }
+      })
+
+      const uniqueHabitNames = Object.keys(habitGroups).filter((_, idx) => idx !== habitIndex)
+
+      // Delete all habits for this week
+      await deleteHabitsForWeek(weekNumber)
+
+      // Re-save remaining habits
+      if (uniqueHabitNames.length > 0) {
+        const newHabits = []
+        uniqueHabitNames.forEach((habitName, newIndex) => {
+          // Find the original index to get the correct day/time data
+          const originalIndex = Object.keys(habitGroups).indexOf(habitName)
+          const selectedDays = dayCommitments[originalIndex] || []
+          const timeSlot = timePreferences[originalIndex] || 'mid-morning'
+          const timeOption = timeOfDayOptions.find(opt => opt.value === timeSlot)
+          const reminderTime = `${String(timeOption.hour).padStart(2, '0')}:00:00`
+
+          selectedDays.forEach(day => {
+            newHabits.push({
+              habit_name: habitName,
+              day_of_week: dayMap[day],
+              reminder_time: reminderTime,
+              timezone: 'America/Chicago'
+            })
+          })
+        })
+
+        await saveHabitsForWeek(weekNumber, newHabits)
+      }
+
+      await loadHabits()
+    } catch (error) {
+      console.error('Error deleting habit:', error)
+      alert('Failed to delete habit. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Group habits by name for display
@@ -193,25 +255,13 @@ export default function Habits() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 text-stone-600 hover:text-stone-900 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Dashboard
-            </button>
-            
-            {!isEditing && groupedHabits.length > 0 && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
-              >
-                <Edit2 className="w-4 h-4" />
-                Edit Habits
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-stone-600 hover:text-stone-900 font-medium transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Dashboard
+          </button>
         </div>
       </header>
 
@@ -248,43 +298,56 @@ export default function Habits() {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-stone-900">Habit Experiments</h2>
-                {isEditing && (
-                  <p className="text-sm text-stone-600 mt-1">
-                    Update your days and times, then save your changes.
-                  </p>
-                )}
               </div>
             </div>
 
-            {isEditing && (
-              <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-900">
-                  <strong>Nice!</strong> Let's lock in when you'll try this—take a quick look at your calendar and choose days that realistically work for you.
-                </p>
-                <p className="text-sm text-green-800 mt-2">
-                  People are far more likely to follow through when they decide <em>when</em> they'll act, not just <em>what</em> they'll do.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-6">
+            <div className="space-y-4">
               {groupedHabits.map(([habitName, habitList], index) => {
                 const committedDays = dayCommitments[index] || []
                 const timeSlot = timePreferences[index] || 'mid-morning'
+                const isEditing = editingHabitIndex === index
 
                 return (
                   <div key={index} className="border border-stone-200 rounded-lg p-5">
-                    <p className="font-semibold text-stone-900 mb-4">{habitName}</p>
+                    <div className="flex items-start justify-between mb-4">
+                      <p className="font-semibold text-stone-900">{habitName}</p>
+                      
+                      {!isEditing && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setEditingHabitIndex(index)}
+                            className="p-2 text-stone-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                            title="Edit habit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(index, habitName)}
+                            disabled={saving}
+                            className="p-2 text-stone-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                            title="Delete habit"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     
                     {isEditing ? (
                       <>
+                        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-900">
+                            <strong>Nice!</strong> Let's lock in when you'll try this—take a quick look at your calendar and choose days that realistically work for you.
+                          </p>
+                        </div>
+
                         <div className="mb-3">
                           <label className="block text-sm font-normal text-stone-900 mb-2">
                             When will you do this?
                           </label>
                         </div>
                         
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
                           {/* Day Commitment Chips */}
                           <div className="flex flex-wrap gap-2">
                             {days.map(day => (
@@ -317,11 +380,38 @@ export default function Habits() {
                             </select>
                           </div>
                         </div>
+
+                        {/* Save/Cancel buttons for this habit */}
+                        <div className="flex gap-2 pt-3 border-t border-stone-200">
+                          <button
+                            onClick={() => handleCancelEdit(index)}
+                            className="flex items-center gap-2 px-4 py-2 text-stone-600 hover:text-stone-700 hover:bg-stone-100 font-medium rounded-lg border border-stone-300 transition text-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleSaveHabit(index)}
+                            disabled={saving}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white font-medium px-4 py-2 rounded-lg transition-all text-sm"
+                          >
+                            {saving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4" />
+                                Save
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <div className="text-sm text-stone-700">
                         <p className="mb-1">
-                          <strong>Days:</strong> {committedDays.length > 0 ? committedDays.join(', ') : 'Not set'}
+                          <strong>Days:</strong> {committedDays.length > 0 ? formatDaysDisplay(convertShortToFullDays(committedDays)) : 'Not set'}
                         </p>
                         <p>
                           <strong>Time:</strong> {timeOfDayOptions.find(opt => opt.value === timeSlot)?.label || 'Not set'}
@@ -331,38 +421,64 @@ export default function Habits() {
                   </div>
                 )
               })}
-            </div>
 
-            {isEditing && (
-              <div className="flex gap-3 mt-6 pt-6 border-t border-stone-200">
+              {/* Add New Habit Button or Limit Message */}
+              {groupedHabits.length >= 3 ? (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                  <p className="text-sm text-amber-900">
+                    You've reached your weekly limit of 3 habit experiments. Great work! 🎉
+                  </p>
+                </div>
+              ) : (
                 <button
-                  onClick={handleCancel}
-                  className="flex items-center gap-2 px-6 py-3 text-stone-600 hover:text-stone-700 hover:bg-stone-100 font-semibold rounded-lg border-2 border-stone-300 transition"
+                  onClick={() => navigate('/add-habit')}
+                  className="w-full mt-4 p-4 border-2 border-dashed border-stone-300 hover:border-green-500 rounded-lg text-stone-600 hover:text-green-600 font-medium transition-all flex items-center justify-center gap-2 group"
                 >
-                  Cancel
+                  <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  Add New Habit
                 </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Save Changes
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-stone-900 mb-2">
+                  Delete Habit?
+                </h3>
+                <p className="text-stone-600">
+                  Are you sure you want to delete <strong>"{deleteModal.habitName}"</strong>? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={closeDeleteModal}
+                className="px-5 py-2.5 text-stone-600 hover:text-stone-700 hover:bg-stone-100 font-medium rounded-lg border border-stone-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteHabit}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Habit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

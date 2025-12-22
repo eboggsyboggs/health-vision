@@ -45,7 +45,14 @@ Provide 4-6 highly specific, personalized action steps for THIS WEEK that:
 4. Feel achievable given their readiness level
 5. Are concrete and actionable (not vague advice)
 
-IMPORTANT: Do NOT include specific days of the week (like "Monday, Wednesday, Friday" or "on Sundays") in the action text. Users will select their own days separately. Instead, use phrases like "three times this week" or "twice a week" if frequency is relevant.
+IMPORTANT FORMATTING RULES:
+- Do NOT include specific days of the week (like "Monday, Wednesday, Friday" or "on Sundays")
+- Do NOT include time-specific references (like "tomorrow", "this evening", "tonight", "in the morning", "before bed")
+- Do NOT include frequency in the action itself (like "three times this week" or "daily")
+- Users will select their own days and times separately during the scheduling step
+- Keep actions timeless and focused on WHAT to do, not WHEN to do it
+- Example: Instead of "Take a 10-minute walk tomorrow morning", write "Take a 10-minute walk"
+- Example: Instead of "Meditate for 5 minutes before bed", write "Meditate for 5 minutes"
 
 Format as a JSON array of objects with this structure:
 [

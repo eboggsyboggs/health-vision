@@ -8,6 +8,8 @@ import PilotIntake from './pages/PilotIntake'
 import Start from './pages/Start'
 import Vision from './pages/Vision'
 import Habits from './pages/Habits'
+import AddHabit from './pages/AddHabit'
+import ScheduleHabits from './pages/ScheduleHabits'
 import Reflection from './pages/Reflection'
 import AuthCallback from './pages/AuthCallback'
 import AuthTest from './pages/AuthTest'
@@ -85,6 +87,22 @@ function App() {
           element={
             <ProtectedRoute>
               <Habits />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/add-habit" 
+          element={
+            <ProtectedRoute>
+              <AddHabit />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/schedule-habits" 
+          element={
+            <ProtectedRoute>
+              <ScheduleHabits />
             </ProtectedRoute>
           } 
         />

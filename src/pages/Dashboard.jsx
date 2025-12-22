@@ -10,6 +10,7 @@ import {
   getWeekStartDate,
   getWeekEndDate,
 } from '../utils/weekCalculator'
+import { formatDaysDisplay } from '../utils/formatDays'
 import { Calendar, Target, LogOut, User, Clock, ArrowRight, Flag } from 'lucide-react'
 
 export default function Dashboard() {
@@ -130,10 +131,7 @@ export default function Dashboard() {
     // Format each habit group
     return Object.entries(habitGroups).map(([habitName, habits]) => {
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-      const days = habits.map(h => dayNames[h.day_of_week]).sort((a, b) => {
-        const order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        return order.indexOf(a) - order.indexOf(b)
-      })
+      const days = habits.map(h => dayNames[h.day_of_week])
       
       // Format time range (convert from 24hr to 12hr format)
       const time = habits[0].reminder_time
@@ -144,15 +142,8 @@ export default function Dashboard() {
       const ampm = hour >= 12 ? 'PM' : 'AM'
       const timeRange = `${startHour}-${endHour}${ampm.toLowerCase()}`
       
-      // Format days list
-      let daysStr
-      if (days.length === 1) {
-        daysStr = days[0]
-      } else if (days.length === 2) {
-        daysStr = `${days[0]} and ${days[1]}`
-      } else {
-        daysStr = `${days.slice(0, -1).join(', ')}, and ${days[days.length - 1]}`
-      }
+      // Use utility function to format days
+      const daysStr = formatDaysDisplay(days)
       
       return {
         habit: habitName,
@@ -304,7 +295,7 @@ export default function Dashboard() {
           {/* Weekly Reflection */}
           <button
             onClick={() => navigate('/reflection')}
-            className="bg-white rounded-2xl shadow-lg p-8 text-left hover:shadow-xl transition group"
+            className="bg-white rounded-2xl shadow-lg p-8 text-left hover:shadow-xl transition group flex flex-col"
           >
             <div className="flex items-start justify-between mb-4">
               <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center group-hover:bg-amber-200 transition">
@@ -314,7 +305,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-stone-800 mb-2">
               Weekly Reflection
             </h2>
-            <p className="text-stone-600 mb-2">
+            <p className="text-stone-600 mb-4">
               Reflect on your week. What went well? What was challenging? What will you adjust?
             </p>
             <div className="flex items-center gap-2 mb-4">
@@ -323,7 +314,7 @@ export default function Dashboard() {
                 Complete by Sunday each week
               </p>
             </div>
-            <div className="text-amber-600 font-semibold group-hover:gap-2 flex items-center gap-1 transition-all">
+            <div className="text-amber-600 font-semibold group-hover:gap-2 flex items-center gap-1 transition-all mt-auto">
               Start Reflection
               <span className="group-hover:translate-x-1 transition-transform">→</span>
             </div>
