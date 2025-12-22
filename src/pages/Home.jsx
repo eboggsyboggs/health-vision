@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../lib/supabase'
+import { getProfile } from '../services/authService'
 import { Loader2 } from 'lucide-react'
 
 export default function Home() {
@@ -49,9 +50,24 @@ export default function Home() {
         }
         
         if (session) {
-          // Clear the hash and redirect to dashboard
+          // Clear the hash
           window.history.replaceState(null, '', '/')
-          navigate('/dashboard', { replace: true })
+          
+          // Check if profile is complete
+          const profileResult = await getProfile(session.user.id)
+          
+          console.log('Home: Profile result:', profileResult)
+          console.log('Home: Profile completed?', profileResult.data?.profile_completed)
+          
+          if (profileResult.success && profileResult.data?.profile_completed) {
+            // Profile complete - go to dashboard
+            console.log('Home: Navigating to dashboard')
+            navigate('/dashboard', { replace: true })
+          } else {
+            // Profile incomplete - go to profile setup
+            console.log('Home: Navigating to profile-setup')
+            navigate('/profile-setup', { replace: true })
+          }
         } else {
           // Auth failed after retries, go to pilot intake
           setDebugInfo('Authentication failed. Please try again.')
@@ -64,10 +80,24 @@ export default function Home() {
         const { data } = await supabase.auth.getSession()
         
         if (data.session) {
-          // Already authenticated - go to dashboard
-          navigate('/dashboard', { replace: true })
+          // Check if profile is complete
+          const profileResult = await getProfile(data.session.user.id)
+          
+          console.log('Home: Profile result:', profileResult)
+          console.log('Home: Profile completed?', profileResult.data?.profile_completed)
+          
+          if (profileResult.success && profileResult.data?.profile_completed) {
+            // Profile complete - go to dashboard
+            console.log('Home: Navigating to dashboard')
+            navigate('/dashboard', { replace: true })
+          } else {
+            // Profile incomplete - go to profile setup
+            console.log('Home: Navigating to profile-setup')
+            navigate('/profile-setup', { replace: true })
+          }
         } else {
           // Not authenticated - go to pilot intake
+          console.log('Home: No session, navigating to pilot intake')
           navigate('/pilot', { replace: true })
         }
       }

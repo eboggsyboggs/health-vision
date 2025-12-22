@@ -5,6 +5,7 @@ import CompassApp from './components/CompassApp'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import PilotIntake from './pages/PilotIntake'
+import ProfileSetup from './pages/ProfileSetup'
 import Start from './pages/Start'
 import Vision from './pages/Vision'
 import Habits from './pages/Habits'
@@ -54,6 +55,16 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/test" element={<AuthTest />} />
+        
+        {/* Profile setup */}
+        <Route 
+          path="/profile-setup" 
+          element={
+            <ProtectedRoute>
+              <ProfileSetup />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* First-time user experience */}
         <Route 

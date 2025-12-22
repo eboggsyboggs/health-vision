@@ -82,9 +82,14 @@ export const getCurrentUser = async () => {
     const session = data.session
     const user = session?.user || null
 
-    console.log('getCurrentUser result:', { hasSession: !!session, hasUser: !!user })
+    console.log('getCurrentUser result:', { 
+      hasSession: !!session, 
+      hasUser: !!user,
+      userEmail: user?.email,
+      fullUser: user
+    })
     
-    return { user, session }
+    return { user, session, success: true }
   } catch (error) {
     console.error('Error in getCurrentUser:', error)
     return { user: null, session: null }
@@ -183,24 +188,25 @@ export const getProfile = async (userId) => {
       return { success: false, error }
     }
 
+    console.log('Getting profile for user:', userId)
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single to handle no rows gracefully
 
     if (error) {
-      // Profile might not exist yet - this is okay
-      if (error.code === 'PGRST116') {
-        return { success: true, data: null }
-      }
       console.error('Error getting profile:', error)
-      return { success: false, error }
+      // For 406 or other errors, treat as profile not existing
+      return { success: true, data: null }
     }
 
+    console.log('Profile data:', data)
     return { success: true, data }
   } catch (error) {
     console.error('Error in getProfile:', error)
-    return { success: false, error }
+    // Treat any error as profile not existing
+    return { success: true, data: null }
   }
 }

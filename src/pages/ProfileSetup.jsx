@@ -1,0 +1,312 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { User, Phone, Mail, CheckCircle, Loader2 } from 'lucide-react'
+import { getCurrentUser } from '../services/authService'
+import { upsertProfile } from '../services/authService'
+import { trackEvent } from '../lib/posthog'
+
+export default function ProfileSetup() {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [user, setUser] = useState(null)
+  const [errors, setErrors] = useState({})
+  
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    smsConsent: false,
+    pilotReason: ''
+  })
+
+  useEffect(() => {
+    loadUser()
+  }, [])
+
+  const loadUser = async () => {
+    const result = await getCurrentUser()
+    console.log('ProfileSetup: getCurrentUser result:', result)
+    if (result.success && result.user) {
+      console.log('ProfileSetup: User email:', result.user.email)
+      setUser(result.user)
+      setFormData(prev => ({
+        ...prev,
+        email: result.user.email || result.user.user_metadata?.email || ''
+      }))
+      console.log('ProfileSetup: User loaded successfully')
+    } else {
+      console.error('ProfileSetup: Failed to load user, but ProtectedRoute should have caught this')
+      // Don't navigate - ProtectedRoute will handle auth
+    }
+    setLoading(false)
+  }
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }))
+    }
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required'
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required'
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Mobile phone is required'
+    } else {
+      // Basic phone validation (US format)
+      const phoneRegex = /^[\d\s\-\(\)]+$/
+      if (!phoneRegex.test(formData.phone)) {
+        newErrors.phone = 'Please enter a valid phone number'
+      }
+    }
+
+    if (!formData.smsConsent) {
+      newErrors.smsConsent = 'You must consent to receive text messages to participate in the pilot'
+    }
+
+    if (!formData.pilotReason.trim()) {
+      newErrors.pilotReason = 'Please tell us why you\'re interested in the pilot'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      // Save profile to database
+      const result = await upsertProfile(user.id, {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+        sms_opt_in: formData.smsConsent,
+        pilot_reason: formData.pilotReason.trim(),
+        profile_completed: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
+
+      if (result.success) {
+        trackEvent('profile_completed', {
+          has_phone: !!formData.phone,
+          sms_consent: formData.smsConsent
+        })
+
+        // Check if user has completed the health journey
+        // If not, send to /start, otherwise to /dashboard
+        navigate('/start')
+      } else {
+        setErrors({ submit: 'Failed to save profile. Please try again.' })
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      setErrors({ submit: 'An error occurred. Please try again.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-amber-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-amber-50">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-white rounded-2xl shadow-xl border border-stone-200 p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
+              Welcome to the Summit Pilot
+            </h1>
+            <p className="text-stone-600">
+              Let's get your profile set up so we can support your health journey.
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* First Name */}
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-semibold text-stone-900 mb-2">
+                First Name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => handleChange('firstName', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                  errors.firstName ? 'border-red-500' : 'border-stone-300'
+                }`}
+                placeholder="Enter your first name"
+              />
+              {errors.firstName && (
+                <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+              )}
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-semibold text-stone-900 mb-2">
+                Last Name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                  errors.lastName ? 'border-red-500' : 'border-stone-300'
+                }`}
+                placeholder="Enter your last name"
+              />
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+              )}
+            </div>
+
+            {/* Email (Read-only) */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-stone-900 mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400" />
+                <input
+                  type="email"
+                  id="email"
+                  value={formData.email}
+                  readOnly
+                  className="w-full pl-11 pr-4 py-3 border border-stone-300 rounded-lg bg-stone-50 text-stone-600"
+                />
+              </div>
+            </div>
+
+            {/* Mobile Phone */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-semibold text-stone-900 mb-2">
+                Mobile Phone <span className="text-red-600">*</span>
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400" />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                    errors.phone ? 'border-red-500' : 'border-stone-300'
+                  }`}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
+            </div>
+
+            {/* SMS Consent */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="smsConsent"
+                  checked={formData.smsConsent}
+                  onChange={(e) => handleChange('smsConsent', e.target.checked)}
+                  className={`mt-1 w-5 h-5 text-green-600 rounded border-stone-300 focus:ring-green-500 cursor-pointer ${
+                    errors.smsConsent ? 'border-red-500' : ''
+                  }`}
+                />
+                <div className="flex-1">
+                  <label htmlFor="smsConsent" className="block text-sm font-semibold text-stone-900 mb-1 cursor-pointer">
+                    Consent to receive text messages <span className="text-red-600">*</span>
+                  </label>
+                  <p className="text-sm text-stone-700">
+                    I agree to receive text message reminders and weekly reflection prompts as part of the Summit Pilot program. 
+                    Message and data rates may apply. You can opt out at any time.
+                  </p>
+                </div>
+              </div>
+              {errors.smsConsent && (
+                <p className="mt-2 text-sm text-red-600">{errors.smsConsent}</p>
+              )}
+            </div>
+
+            {/* Pilot Reason */}
+            <div>
+              <label htmlFor="pilotReason" className="block text-sm font-semibold text-stone-900 mb-2">
+                Why are you interested in this pilot? <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                id="pilotReason"
+                value={formData.pilotReason}
+                onChange={(e) => handleChange('pilotReason', e.target.value)}
+                rows={4}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition resize-none ${
+                  errors.pilotReason ? 'border-red-500' : 'border-stone-300'
+                }`}
+                placeholder="Tell us what motivated you to join and what you hope to achieve..."
+              />
+              {errors.pilotReason && (
+                <p className="mt-1 text-sm text-red-600">{errors.pilotReason}</p>
+              )}
+            </div>
+
+            {/* Submit Error */}
+            {errors.submit && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">{errors.submit}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  Complete Profile
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  )
+}
