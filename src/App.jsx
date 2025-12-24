@@ -57,14 +57,10 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/test" element={<AuthTest />} />
         
-        {/* Profile setup */}
+        {/* Profile setup - Public for Twilio verification */}
         <Route 
           path="/profile-setup" 
-          element={
-            <ProtectedRoute>
-              <ProfileSetup />
-            </ProtectedRoute>
-          } 
+          element={<ProfileSetup />} 
         />
         
         {/* First-time user experience */}
