@@ -22,11 +22,11 @@
 ### Step 2: Configure Redirect URLs
 
 1. Go to: https://supabase.com/dashboard/project/oxszevplpzmzmeibjtdz/auth/url-configuration
-2. **Site URL:** Set to your production URL: `https://summit-health-vision.vercel.app`
+2. **Site URL:** Set to your production URL: `https://summit-pilot.vercel.app`
 3. **Redirect URLs:** Add these (one per line):
    ```
    http://localhost:5173/**
-   https://summit-health-vision.vercel.app/**
+   https://summit-pilot.vercel.app/**
    ```
 4. Click **Save**
 

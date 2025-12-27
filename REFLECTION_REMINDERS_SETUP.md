@@ -82,7 +82,7 @@ These should already be configured in Supabase → Settings → Edge Functions �
 
 ### Message Format
 ```
-Hi [FirstName]! 🏔️ It's the last day of the week - take a moment to reflect on your progress and plan for next week: https://health-vision-pi.vercel.app/dashboard
+Hi [FirstName]! 🏔️ It's the last day of the week - take a moment to reflect on your progress and plan for next week: https://summit-pilot.vercel.app/dashboard
 ```
 
 ### Database Schema
